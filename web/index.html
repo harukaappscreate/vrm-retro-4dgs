@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VRM RETRO 4DGS STUDIO</title>
+<style>
+  :root { --bar:44px; --panel:308px; --bg:#161a2c; --card:#202642; --ink:#e8ecf8; --dim:#8f9ac0; --acc:#70c6a9; --blue:#7696de; --warn:#d4186c; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:13px/1.45 system-ui, sans-serif; }
+  button, select, input { font:inherit; }
+  #bar { position:fixed; top:0; left:0; right:0; height:var(--bar); z-index:1000; display:flex; gap:6px; align-items:center;
+         padding:0 10px; background:#262d4d; border-bottom:1px solid #35406b; overflow-x:auto; white-space:nowrap; }
+  #bar .sep { width:1px; height:22px; background:#455288; margin:0 2px; flex:none; }
+  .btn { background:var(--acc); color:#0c1718; border:0; padding:6px 11px; border-radius:4px; cursor:pointer; font-weight:700; flex:none; }
+  .btn.blue { background:var(--blue); color:#0e1428; }
+  .btn.ghost { background:#35406b; color:var(--ink); }
+  .btn.active { outline:2px solid var(--acc); background:#2b4c57; color:#fff; }
+  .btn:disabled { opacity:.4; cursor:default; }
+  #bar label.btn input, label.pbtn input { display:none; }
+  label.pbtn { display:inline-flex; align-items:center; gap:4px; }
+  #bar select { padding:5px; border-radius:4px; border:0; background:#35406b; color:var(--ink); flex:none; max-width:190px; }
+  #lang { margin-left:auto; }
+
+  #pyxel-screen { position:fixed !important; top:var(--bar) !important; left:0 !important; right:var(--panel) !important;
+                  bottom:0 !important; width:auto !important; height:auto !important; }
+  #gl-wrap { position:fixed; top:var(--bar); left:0; right:var(--panel); bottom:0; background:#111420; z-index:800; display:none; overflow:hidden; }
+  #gl-cam, #gl-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; z-index:0; }
+  #gl-canvas { position:relative; z-index:1; display:block; width:100%; height:100%; cursor:grab; }
+  #gl-canvas:active { cursor:grabbing; }
+  #gl-hud { position:absolute; bottom:10px; left:12px; z-index:2; background:rgba(20,25,42,.82); border:1px solid #35406b;
+            border-radius:6px; padding:5px 9px; font-size:12px; pointer-events:none; color:var(--dim); }
+  #gl-ar-bar { position:absolute; left:12px; top:10px; z-index:3; display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+               max-width:calc(100% - 24px); background:rgba(20,25,42,.88); border:1px solid #35406b; border-radius:6px; padding:5px 8px; }
+  #gl-desky-wrap { display:none; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
+  #gl-desky { width:84px; accent-color:var(--acc); }
+  #gl-ar-msg { position:absolute; left:12px; top:56px; z-index:4; max-width:440px; display:none; gap:8px; align-items:flex-start;
+               background:rgba(48,20,38,.95); border:1px solid var(--warn); color:#ffd6e4; border-radius:6px; padding:8px 10px; font-size:12px; }
+  #gl-ar-msg button { background:none; border:0; color:#ffd6e4; cursor:pointer; font-weight:700; padding:0 4px; line-height:1.2; }
+  #gl-rebake { position:absolute; inset:0; z-index:4; display:none; align-items:center; justify-content:center;
+               background:rgba(17,20,32,.72); backdrop-filter:blur(4px); padding:20px; text-align:center; }
+  #gl-rebake .box { background:#202642; border:1px solid #455288; border-radius:8px; padding:16px 20px; max-width:340px; }
+  #gl-rebake .box p { margin:0 0 10px; color:var(--ink); font-size:13px; }
+
+  #panel { position:fixed; top:var(--bar); right:0; bottom:0; width:var(--panel); box-sizing:border-box; overflow-y:auto;
+           padding:12px 14px 20px; background:var(--card); border-left:1px solid #35406b; z-index:900; }
+  #panel h2 { font-size:11px; margin:14px 0 6px; color:var(--dim); text-transform:uppercase; letter-spacing:.07em; }
+  #panel h2:first-child { margin-top:0; }
+  .row { display:flex; gap:8px; align-items:center; margin:5px 0; }
+  .row span:first-child { flex:1; }
+  .row select, .row input[type=range] { width:144px; accent-color:var(--acc); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+  .muted { color:var(--dim); font-size:12px; }
+  .sublbl { font-size:11px; color:var(--acc); font-weight:700; margin-top:8px; }
+  .warn { background:var(--warn); color:#fff; padding:2px 6px; border-radius:3px; margin:3px 0; font-size:11px; font-weight:600; }
+  .lic div { font-size:11px; color:var(--dim); word-break:break-word; }
+
+  .engine-pill { display:inline-block; margin:2px 0 6px; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700;
+                 background:#2b4c57; color:#70c6a9; border:1px solid #3b6f75; }
+  .engine-pill.webgl { background:#273766; color:#a9c1ff; border-color:#4b67b0; }
+  .subcard { background:#181d33; border:1px solid #2e385c; border-radius:6px; padding:8px 9px; margin:6px 0; transition:opacity .15s; }
+  .subcard.is-disabled { opacity:.48; }
+  .subcard-hd { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--ink); }
+  .badge { font-size:10px; padding:1px 6px; border-radius:3px; background:#35406b; color:#a9c1ff; font-weight:700; }
+  .badge.shared { background:#254952; color:var(--acc); }
+  .card-note { font-size:11px; color:#f2c97d; margin-top:4px; display:none; }
+  .subcard.is-disabled .card-note { display:block; }
+
+  #mfilter { width:100%; box-sizing:border-box; padding:5px 8px; margin-top:4px; border:0; border-radius:4px; background:#35406b; color:var(--ink); }
+  #motions { max-height:165px; overflow-y:auto; margin:6px 0; padding:4px 6px; background:#161a2c; border-radius:4px; font-size:12px; }
+  #motions h3 { font-size:11px; margin:6px 0 2px; color:var(--blue); text-transform:uppercase; }
+  .mitem { display:block; width:100%; text-align:left; background:none; border:0; color:var(--ink); padding:2px 4px; border-radius:3px; cursor:pointer; }
+  .mitem:hover { background:#2a3256; }
+  .mitem.cur { background:#2b4c57; color:#70c6a9; font-weight:700; }
+  .mitem[hidden] { display:none; }
+  #status { margin-top:6px; font-size:12px; color:var(--acc); min-height:1.4em; }
+  #status.err { color:#ff9798; }
+  #progress { margin-top:8px; padding:6px 8px; background:#161a2c; border-radius:5px; border:1px solid #35406b; }
+  #pbar { height:8px; background:#35406b; border-radius:4px; overflow:hidden; margin-bottom:4px; }
+  #pfill { height:100%; width:0; background:var(--acc); transition:width .08s; }
+  #scrub { width:100%; accent-color:var(--acc); }
+  a { color:var(--blue); }
+  @media (max-width: 780px) {
+    :root { --panel:0px; }
+    #pyxel-screen, #gl-wrap { bottom:45% !important; }
+    #panel { top:55%; left:0; width:auto; border-left:0; border-top:1px solid #35406b; }
+  }
+</style>
+<script src="https://kitao.dev/pyxel/3.0.4/pyxel.js"></script>
+</head>
+<body>
+<div id="bar">
+  <label class="btn blue"><span data-i18n="open_vrm">Open VRM/GLB</span><input type="file" id="file" accept=".vrm,.glb"></label>
+  <button class="btn ghost" id="sample" type="button" data-i18n="sample" title="Reload Sendagaya Shibu (CC0, 4 MB)">Sample</button>
+  <label class="btn ghost" data-i18n-title="add_mot_tip" title="Add custom .vrma (with blink/lip-sync) or .fbx animation"><span data-i18n="add_mot">Add VRMA/FBX</span><input type="file" id="motfile" accept=".vrma,.fbx"></label>
+  <span class="sep"></span>
+  <select id="motion" disabled></select>
+  <button class="btn exp" id="bake" type="button" data-i18n="bake" data-i18n-title="bake_tip" title="Bake selected motion + expressions into GPU Rigged 3DGS">Bake 4DGS</button>
+  <span class="sep"></span>
+  <button class="btn ghost active" id="tab_pyxel" type="button" data-i18n="tab_pyxel">Pyxel Retro</button>
+  <button class="btn ghost exp" id="tab_webgl" type="button" data-i18n="tab_webgl" data-i18n-title="tab_webgl_tip" title="Preview GPU-skinned Rigged 3DGS + Expressions in WebGL2">WebGL2 4DGS</button>
+  <button class="btn ghost" id="reset" type="button" data-i18n="reset">Reset</button>
+  <button class="btn ghost" id="lang" type="button" title="Switch language (English / 日本語)">日本語</button>
+</div>
+<div id="pyxel-screen"></div>
+<div id="gl-wrap">
+  <video id="gl-cam" autoplay playsinline muted></video>
+  <img id="gl-photo" alt="">
+  <canvas id="gl-canvas"></canvas>
+  <div id="gl-hud" data-i18n="gl_hud">GPU Rigged 3DGS Preview · Drag: orbit · Wheel: zoom</div>
+  <div id="gl-rebake">
+    <div class="box">
+      <p data-i18n="rebake_msg">Settings changed — Re-Bake WebGL2 4DGS to view updated frames.</p>
+      <button class="btn exp" id="gl-rebake-btn" type="button" data-i18n="rebake_btn">Re-Bake WebGL2 4DGS</button>
+    </div>
+  </div>
+  <div id="gl-ar-msg">
+    <span id="gl-ar-msg-txt" style="flex:1"></span>
+    <button id="gl-ar-msg-close" type="button" aria-label="Close">×</button>
+  </div>
+  <div id="gl-ar-bar">
+    <button class="btn ghost" id="gl-ar" type="button" data-i18n="desk_ar" data-i18n-title="desk_ar_tip" title="Use live camera feed as background">Camera BG</button>
+    <label class="btn ghost pbtn" data-i18n-title="desk_photo_tip" title="Use any local photo as background (works on itch.io)"><span data-i18n="desk_photo">Photo BG</span><input id="gl-photo-in" type="file" accept="image/*"></label>
+    <button class="btn ghost" id="gl-clr-bg" type="button" style="display:none" data-i18n="clear_bg">Clear BG</button>
+    <label id="gl-desky-wrap"><span data-i18n="desk_y">Height Y</span><input id="gl-desky" type="range" min="-0.6" max="0.6" step="0.02" value="0.0"></label>
+    <button class="btn ghost" id="gl-style" type="button" data-i18n-title="gl_style_tip" title="Switch WebGL2 Gaussian splat style">Style: Gaussian</button>
+  </div>
+</div>
+<div id="panel">
+  <h2 data-i18n="h_export">Export 3DGS / 4DGS</h2>
+  <div class="sublbl" data-i18n="sub_4d">Animated Rigged 3DGS / 4D (auto-bakes with progress)</div>
+  <div class="grid2">
+    <button class="btn exp" id="exp_html" type="button" data-i18n="exp_html" data-i18n-title="exp_html_tip" title="Self-contained offline HTML viewer with GPU Rigged 3DGS + Expressions + Camera/Photo BG">Single .HTML</button>
+    <button class="btn blue exp" id="exp_zip" type="button" data-i18n="exp_zip" data-i18n-title="exp_zip_tip" title="All per-frame Y-down .splat files + sequence.r3dg + manifest">4DGS .ZIP</button>
+  </div>
+  <div class="sublbl" data-i18n="sub_3d">Static 3DGS (current frame only · Y-down for external viewers)</div>
+  <div class="grid2">
+    <button class="btn blue exp" id="exp_splat" type="button" data-i18n="exp_splat" data-i18n-title="exp_splat_tip" title="Single frame .splat for 3dgsviewers.com, SuperSplat, etc.">.SPLAT (1F)</button>
+    <button class="btn blue exp" id="exp_ply" type="button" data-i18n="exp_ply" data-i18n-title="exp_ply_tip" title="Standard 3DGS binary .ply (current frame)">.PLY (1F)</button>
+  </div>
+  <div id="progress" hidden><div id="pbar"><div id="pfill"></div></div><div id="ptext" class="muted"></div></div>
+  <div id="status"></div>
+
+  <h2 data-i18n="h_model">Model</h2>
+  <div id="mtitle" style="font-weight:700" data-i18n="starting">Starting Pyxel 3...</div>
+  <div id="mstats" class="muted"></div>
+  <div id="expr-note" class="muted" style="margin-top:3px"></div>
+  <div id="warnings"></div>
+  <div id="license" class="lic"></div>
+
+  <h2 data-i18n="h_view">View &amp; Sampling</h2>
+  <div class="engine-pill" id="engine-pill">Viewing: Pyxel Retro</div>
+
+  <div class="subcard" id="pyxel-card">
+    <div class="subcard-hd">
+      <span data-i18n="card_pyxel">Pyxel Retro Display</span>
+      <span class="badge" data-i18n="badge_pyxel">Pyxel tab only</span>
+    </div>
+    <div class="row"><span data-i18n="lbl_mode">View Mode</span><select id="mode">
+      <option value="4DGS" selected data-i18n="opt_4dgs">Retro 4DGS</option>
+      <option value="SPLIT" data-i18n="opt_split">Split (Mesh | 4DGS)</option>
+      <option value="MESH" data-i18n="opt_mesh">Original Mesh</option>
+      <option value="DOTS" data-i18n="opt_dots">Color Dots</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_brush">Brush</span><select id="brush">
+      <option value="DITHER" selected data-i18n="opt_dither">Bayer Dither Halo</option>
+      <option value="SOLID" data-i18n="opt_solid">Solid Disc</option>
+    </select></div>
+    <div class="card-note" id="pyxel-only-note" data-i18n="pyxel_only_note">Applies to Pyxel Retro tab only. Use WebGL2 Style on the canvas bar.</div>
+  </div>
+
+  <div class="subcard" id="shared-card">
+    <div class="subcard-hd">
+      <span data-i18n="card_shared">4DGS Sampling &amp; Quality</span>
+      <span class="badge shared" data-i18n="badge_shared">Both tabs &amp; Export</span>
+    </div>
+    <div class="row"><span data-i18n="lbl_cull">Interior Cull</span><select id="cull">
+      <option value="1" selected data-i18n="opt_cull_on">On (Skirt/Body only · Face Safe)</option>
+      <option value="0" data-i18n="opt_cull_off">Off (All Surfaces)</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_count">Splat Count</span><select id="count">
+      <option value="8000">8,000</option>
+      <option value="15000">15,000</option>
+      <option value="30000" selected data-i18n="opt_30k">30,000 (Recommended)</option>
+      <option value="50000" data-i18n="opt_50k">50,000 (Ultra)</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_fps">Bake FPS</span><select id="fps">
+      <option value="15">15 fps</option>
+      <option value="24" selected>24 fps</option>
+      <option value="30">30 fps</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_autoblink">Auto Blink</span><select id="autoblink">
+      <option value="1" selected data-i18n="opt_blink_on">On (if no VRMA expr)</option>
+      <option value="0" data-i18n="opt_blink_off">Off</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_exprtest">Expr Test</span><select id="exprtest">
+      <option value="" selected data-i18n="opt_test_auto">Motion / Auto</option>
+      <option value="blink" data-i18n="opt_test_blink">Test: Blink</option>
+      <option value="blinkLeft" data-i18n="opt_test_winkl">Test: Wink L</option>
+      <option value="blinkRight" data-i18n="opt_test_winkr">Test: Wink R</option>
+      <option value="aa" data-i18n="opt_test_aa">Test: Mouth (aa)</option>
+      <option value="happy" data-i18n="opt_test_happy">Test: Happy</option>
+    </select></div>
+    <div class="row"><span data-i18n="lbl_scale">Splat Scale</span><input id="scale" type="range" min="0.4" max="2.5" step="0.05" value="1.25"></div>
+  </div>
+
+  <h2 data-i18n="h_play">Playback</h2>
+  <div class="row">
+    <button class="btn ghost" id="play" type="button" style="padding:4px 10px" data-i18n="play_btn">Play / Pause</button>
+    <span id="fnum" class="muted" style="text-align:right;flex:1" data-i18n="live_lbl">Live (Bake to scrub)</span>
+  </div>
+  <input id="scrub" type="range" min="0" max="1" value="0" step="1" disabled>
+
+  <h2 data-i18n="h_motions">Motions (231+ CC0)</h2>
+  <input id="mfilter" type="text" data-i18n-placeholder="filter_ph" placeholder="Filter motions (e.g. walk, dance, sword)" autocomplete="off">
+  <div id="motions"></div>
+
+  <h2 data-i18n="h_about">About</h2>
+  <div class="muted" data-i18n-html="about_body">
+    Your file never leaves your device: all sampling, baking and exporting run locally in your browser.<br>
+    Drag to orbit, wheel to zoom. Load a VRM with facial morphs + VRMA expression tracks for blink &amp; lip-sync!<br>
+    231 motions: Quaternius Universal Animation Library 1 &amp; 2 and KayKit Character Animations (Kay Lousberg), all CC0, via open-vrma.<br>
+    Made with <a href="https://github.com/kitao/pyxel" target="_blank" rel="noopener">Pyxel 3</a> (MIT), Pyodide (MPL-2.0), NumPy (BSD-3-Clause) and Pillow (MIT-CMU). Tool by haruka_apps.
+  </div>
+  <div class="muted" style="margin-top:6px" data-i18n="sample_credit">
+    Sample avatar: Sendagaya Shibu (CC0 VRoid sample by coati; textures reduced and facial morphs removed for this tool).
+  </div>
+
+  <h2 data-i18n="h_disc">Disclaimer</h2>
+  <div class="muted" data-i18n="disc_body">
+    This tool and everything it exports are provided "AS IS", without warranty of any kind. The author accepts no liability for any damage or trouble arising from their use. You are responsible for following the license of the VRM/motion you load.
+  </div>
+</div>
+
+<pyxel-play root="." name="vrm_retro_4dgs.pyxapp" packages="numpy,pillow"></pyxel-play>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+const I18N = {
+  en: {
+    lang_btn: "日本語",
+    open_vrm: "Open VRM/GLB",
+    sample: "Sample",
+    add_mot: "Add VRMA/FBX",
+    add_mot_tip: "Add custom .vrma (with blink/lip-sync) or .fbx animation",
+    bake: "Bake 4DGS",
+    bake_tip: "Bake selected motion + expressions into GPU Rigged 3DGS",
+    tab_pyxel: "Pyxel Retro",
+    tab_webgl: "WebGL2 4DGS",
+    tab_webgl_tip: "Preview GPU-skinned Rigged 3DGS + Expressions in WebGL2",
+    reset: "Reset",
+    gl_hud: "GPU Rigged 3DGS Preview · L-drag: orbit · R-drag: move · Wheel: zoom",
+    rebake_msg: "Settings changed — Re-Bake WebGL2 4DGS to view updated frames.",
+    rebake_btn: "Re-Bake WebGL2 4DGS",
+    desk_ar: "Camera BG",
+    desk_ar_tip: "Use live camera feed as background",
+    desk_photo: "Photo BG",
+    desk_photo_tip: "Use any local photo as background (works on itch.io)",
+    clear_bg: "Clear BG",
+    desk_y: "Height Y",
+    gl_style_tip: "Switch WebGL2 Gaussian splat style",
+    style_gauss: "Style: Gaussian",
+    style_dots: "Style: Dots",
+    eng_pyxel: "Viewing: Pyxel Retro",
+    eng_webgl: "Viewing: WebGL2 4DGS",
+    ar_blocked_iframe: "itch.io embeds block camera permissions inside iframes. Use 'Photo BG' right next to this button, or export 'Single .HTML' and open it locally / on HTTPS for live Camera BG!",
+    ar_blocked_notfound: "No camera device found (NotFoundError). Connect a webcam (or open MacBook lid) or use 'Photo BG'!",
+    ar_blocked_notreadable: "Camera is in use by another tab or app (NotReadableError). Close the other camera tab or try 'Photo BG'.",
+    ar_blocked_other: "Camera permission denied or unavailable ({reason}). Check browser console / Try 'Photo BG' or 'Single .HTML'.",
+    h_export: "Export 3DGS / 4DGS",
+    sub_4d: "Animated Rigged 3DGS / 4D (auto-bakes with progress)",
+    exp_html: "Single .HTML",
+    exp_html_tip: "Self-contained offline HTML viewer with GPU Rigged 3DGS + Expressions + Camera/Photo BG",
+    exp_zip: "4DGS .ZIP",
+    exp_zip_tip: "All per-frame Y-down .splat files + sequence.r3dg + manifest",
+    sub_3d: "Static 3DGS (current frame only · Y-down for external viewers)",
+    exp_splat: ".SPLAT (1F)",
+    exp_splat_tip: "Single frame .splat for 3dgsviewers.com, SuperSplat, etc.",
+    exp_ply: ".PLY (1F)",
+    exp_ply_tip: "Standard 3DGS binary .ply (current frame)",
+    h_model: "Model",
+    starting: "Starting Pyxel 3...",
+    h_view: "View & Sampling",
+    card_pyxel: "Pyxel Retro Display",
+    badge_pyxel: "Pyxel tab only",
+    pyxel_only_note: "Applies to Pyxel Retro tab only. Use WebGL2 Style on the canvas bar.",
+    card_shared: "4DGS Sampling & Quality",
+    badge_shared: "Both tabs & Export",
+    lbl_mode: "View Mode",
+    opt_4dgs: "Retro 4DGS",
+    opt_split: "Split (Mesh | 4DGS)",
+    opt_mesh: "Original Mesh",
+    opt_dots: "Color Dots",
+    lbl_brush: "Brush",
+    opt_dither: "Bayer Dither Halo",
+    opt_solid: "Solid Disc",
+    lbl_cull: "Interior Cull",
+    opt_cull_on: "On (Skirt/Body only · Face Safe)",
+    opt_cull_off: "Off (All Surfaces)",
+    lbl_count: "Splat Count",
+    opt_30k: "30,000 (Recommended)",
+    opt_50k: "50,000 (Ultra)",
+    lbl_fps: "Bake FPS",
+    lbl_autoblink: "Auto Blink",
+    opt_blink_on: "On (if no VRMA expr)",
+    opt_blink_off: "Off",
+    lbl_exprtest: "Expr Test",
+    opt_test_auto: "Motion / Auto",
+    opt_test_blink: "Test: Blink",
+    opt_test_winkl: "Test: Wink L",
+    opt_test_winkr: "Test: Wink R",
+    opt_test_aa: "Test: Mouth (aa)",
+    opt_test_happy: "Test: Happy",
+    lbl_scale: "Splat Scale",
+    h_play: "Playback",
+    play_btn: "Play / Pause",
+    live_lbl: "Live (Bake to scrub)",
+    h_motions: "Motions (231+ CC0)",
+    filter_ph: "Filter motions (e.g. walk, dance, sword)",
+    h_about: "About",
+    about_body: 'Your file never leaves your device: all sampling, baking and exporting run locally in your browser.<br>Left-drag to orbit, right-drag to move, wheel to zoom. Load a VRM with facial morphs + VRMA expression tracks for blink &amp; lip-sync!<br>231 motions: Quaternius Universal Animation Library 1 &amp; 2 and KayKit Character Animations (Kay Lousberg), all CC0, via open-vrma.<br>Made with <a href="https://github.com/kitao/pyxel" target="_blank" rel="noopener">Pyxel 3</a> (MIT), Pyodide (MPL-2.0), NumPy (BSD-3-Clause) and Pillow (MIT-CMU). Tool by haruka_apps.',
+    sample_credit: "Sample avatar: Sendagaya Shibu (CC0 VRoid sample by coati; textures reduced and facial morphs removed for this tool).",
+    h_disc: "Disclaimer",
+    disc_body: 'This tool and everything it exports are provided "AS IS", without warranty of any kind. The author accepts no liability for any damage or trouble arising from their use. You are responsible for following the license of the VRM/motion you load.',
+  },
+  ja: {
+    lang_btn: "EN",
+    open_vrm: "VRM/GLB を開く",
+    sample: "サンプル",
+    add_mot: "VRMA/FBX 追加",
+    add_mot_tip: ".vrma（目ぱち・口パク対応）/ .fbx モーションを追加読み込み",
+    bake: "Bake 4DGS (録画)",
+    bake_tip: "選択中モーションのボーン・表情軌道と粒データをGPU Rigged 3DGSとして記憶します",
+    tab_pyxel: "Pyxel レトロ",
+    tab_webgl: "WebGL2 4DGS",
+    tab_webgl_tip: "GPUスキニング＋表情モーフ対応の高密度Rigged 3DGSプレビュー",
+    reset: "視点リセット",
+    gl_hud: "GPU Rigged 3DGS プレビュー · 左ドラッグ: 回転 · 右ドラッグ: 移動 · ホイール: ズーム",
+    rebake_msg: "設定が変更されました — WebGL2 を再ベイクすると最新設定で再生されます。",
+    rebake_btn: "WebGL2 を再ベイク",
+    desk_ar: "カメラ背景",
+    desk_ar_tip: "カメラ映像を背景に表示",
+    desk_photo: "写真背景",
+    desk_photo_tip: "端末内の写真や画像を背景に設定（itch.ioでも確実動作）",
+    clear_bg: "背景クリア",
+    desk_y: "高さ位置",
+    gl_style_tip: "WebGL2側の粒の表現を切り替え",
+    style_gauss: "表示: ガウス粒",
+    style_dots: "表示: 点群ドット",
+    eng_pyxel: "表示中: Pyxel レトロ",
+    eng_webgl: "表示中: WebGL2 4DGS",
+    ar_blocked_iframe: "itch.io などの iframe 埋め込み環境ではブラウザ制限によりカメラが拒否されます。すぐ隣の「写真背景」を使うか、「単一 .HTML」を書き出してローカル/HTTPSで開くとカメラ背景が使えます！",
+    ar_blocked_notfound: "カメラが見つかりません (NotFoundError)。Webカメラを接続するか（MacBook を閉じている場合は開く）、隣の「写真背景」をお試しください！",
+    ar_blocked_notreadable: "カメラが別のタブやアプリで使用中です (NotReadableError)。他のタブを閉じるか「写真背景」をお試しください。",
+    ar_blocked_other: "カメラの許可が得られないか利用できません ({reason})。Consoleログ確認、または「写真背景」をお試しください。",
+    h_export: "書き出し (3DGS / 4DGS)",
+    sub_4d: "動く Rigged 3DGS / 4D（未ベイク時は進捗付き自動ベイク）",
+    exp_html: "単一 .HTML",
+    exp_html_tip: "表情モーフ・カメラ背景・写真背景対応の自己完結WebGL2ビューアを保存",
+    exp_zip: "4DGS .ZIP",
+    exp_zip_tip: "全フレーム連番 .splat (正立補正済み) ＋ sequence.r3dg ＋ manifest",
+    sub_3d: "静止 3DGS（表示中の1フレームのみ・外部ビューア正立補正済み）",
+    exp_splat: ".SPLAT (1枚)",
+    exp_splat_tip: "3dgsviewers.com / SuperSplat 等向けの静止1フレーム",
+    exp_ply: ".PLY (1枚)",
+    exp_ply_tip: "標準3DGSバイナリ .ply 形式（静止1フレーム）",
+    h_model: "モデル情報",
+    starting: "Pyxel 3 を起動中...",
+    h_view: "表示・サンプリング設定",
+    card_pyxel: "Pyxel レトロ表示",
+    badge_pyxel: "Pyxel タブ専用",
+    pyxel_only_note: "Pyxel レトロ タブ専用です。WebGL2 側は画面下の表示ボタンを使ってください。",
+    card_shared: "4DGS サンプリング＆品質",
+    badge_shared: "両タブ＆書き出し共通",
+    lbl_mode: "表示モード",
+    opt_4dgs: "レトロ 4DGS",
+    opt_split: "分割比較 (Mesh | 4DGS)",
+    opt_mesh: "元メッシュ",
+    opt_dots: "カラー点群",
+    lbl_brush: "ブラシ形状",
+    opt_dither: "Bayer ディザ",
+    opt_solid: "くっきり丸粒",
+    lbl_cull: "内側カリング",
+    opt_cull_on: "ON (スカート透け防止・顔保護)",
+    opt_cull_off: "OFF (全面)",
+    lbl_count: "粒の数",
+    opt_30k: "30,000 (推奨・高精細)",
+    opt_50k: "50,000 (超高密度)",
+    lbl_fps: "ベイク FPS",
+    lbl_autoblink: "自動まばたき",
+    opt_blink_on: "ON (VRMAに表情が無い時)",
+    opt_blink_off: "OFF",
+    lbl_exprtest: "表情テスト",
+    opt_test_auto: "モーション / 自動",
+    opt_test_blink: "テスト: 両目まばたき",
+    opt_test_winkl: "テスト: 左ウインク",
+    opt_test_winkr: "テスト: 右ウインク",
+    opt_test_aa: "テスト: 口パク (あ)",
+    opt_test_happy: "テスト: 笑顔",
+    lbl_scale: "粒の大きさ倍率",
+    h_play: "再生・タイムライン",
+    play_btn: "再生 / 停止",
+    live_lbl: "ライブ表示（ベイクでコマ送り可）",
+    h_motions: "モーション一覧 (231+ CC0)",
+    filter_ph: "モーション検索 (例: walk, dance, sword)",
+    h_about: "このツールについて",
+    about_body: '読み込んだファイルは外部へ送信されず、ブラウザ内のみで処理・書き出しされます。<br>左ドラッグで回転、右ドラッグでキャラ移動、ホイールで拡大縮小。表情モーフ付き VRM ＋ 表情付き VRMA を読み込むと目ぱち・口パクも動きます！<br>231 モーション: Quaternius Universal Animation Library 1 &amp; 2、KayKit Character Animations (Kay Lousberg)、いずれも CC0（open-vrma 経由）。<br>使用技術: <a href="https://github.com/kitao/pyxel" target="_blank" rel="noopener">Pyxel 3</a> (MIT)、Pyodide (MPL-2.0)、NumPy (BSD-3-Clause)、Pillow (MIT-CMU)。制作: haruka_apps。',
+    sample_credit: "サンプルモデル: Sendagaya Shibu (CC0 VRoid サンプル / coati 作。本ツール向けに軽量化済み・表情モーフ削除済み)。",
+    h_disc: "免責事項",
+    disc_body: "本ツールおよび出力データは現状有姿（AS IS）で無保証にて提供されます。利用により生じたいかなる損害についても作者は責任を負いません。読み込んだ VRM・モーションのライセンス遵守はご自身の責任にてお願いします。",
+  }
+};
+
+let curLang = "en";
+let activeTab = "pyxel";
+let lastArReason = null;
+
+function formatArMessage(reason) {
+  const dict = I18N[curLang];
+  if (reason.startsWith("iframe")) return dict.ar_blocked_iframe;
+  if (reason === "NotFoundError" || reason === "DevicesNotFoundError") return dict.ar_blocked_notfound;
+  if (reason === "NotReadableError" || reason === "TrackStartError") return dict.ar_blocked_notreadable;
+  return dict.ar_blocked_other.replace("{reason}", reason);
+}
+
+function syncDynamicLabels() {
+  const dict = I18N[curLang];
+  const pill = $("engine-pill");
+  if (pill) {
+    pill.textContent = activeTab === "webgl" ? dict.eng_webgl : dict.eng_pyxel;
+    pill.classList.toggle("webgl", activeTab === "webgl");
+  }
+  const styleBtn = $("gl-style");
+  if (styleBtn) {
+    const dot = !!(glPlayer && glPlayer.state.dotMode);
+    styleBtn.textContent = dot ? dict.style_dots : dict.style_gauss;
+    styleBtn.classList.toggle("active", dot);
+  }
+  if (lastArReason && $("gl-ar-msg").style.display === "flex") {
+    $("gl-ar-msg-txt").textContent = formatArMessage(lastArReason);
+  }
+}
+
+function applyLang(lang) {
+  curLang = lang === "ja" ? "ja" : "en";
+  document.documentElement.lang = curLang;
+  const dict = I18N[curLang];
+  $("lang").textContent = dict.lang_btn;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const k = el.dataset.i18n;
+    if (dict[k] !== undefined) el.textContent = dict[k];
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+    const k = el.dataset.i18nHtml;
+    if (dict[k] !== undefined) el.innerHTML = dict[k];
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const k = el.dataset.i18nTitle;
+    if (dict[k] !== undefined) el.title = dict[k];
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const k = el.dataset.i18nPlaceholder;
+    if (dict[k] !== undefined) el.placeholder = dict[k];
+  });
+  syncDynamicLabels();
+}
+$("lang").addEventListener("click", () => applyLang(curLang === "en" ? "ja" : "en"));
+
+function createR3DGPlayer(opts) {
+  const { canvas, videoEl, photoEl, hudEl, statusEl, scrubEl, fnumEl } = opts;
+  const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, premultipliedAlpha: true });
+  if (!gl) return null;
+
+  const TEX_W = 1024;
+  const SORT_BINS = 4096;
+  const MAX_MORPH = 16;
+  const vsSplat = `#version 300 es
+  in vec2 aCorner;
+  in float aSplatId;
+  uniform sampler2D uTexPos;
+  uniform sampler2D uTexU;
+  uniform sampler2D uTexV;
+  uniform sampler2D uTexCol;
+  uniform sampler2D uTexBones;
+  uniform sampler2D uTexMorph;
+  uniform int uMorphCount;
+  uniform int uMorphSplats;
+  uniform int uMorphRows;
+  uniform float uExprW[16];
+  uniform mat4 uView;
+  uniform vec2 uFocal;
+  uniform vec2 uScreen;
+  uniform float uScale;
+  uniform float uDeskY;
+  out vec2 vLocal;
+  out vec4 vColor;
+  mat3x4 loadBone(int j) {
+    vec4 r0 = texelFetch(uTexBones, ivec2(0, j), 0);
+    vec4 r1 = texelFetch(uTexBones, ivec2(1, j), 0);
+    vec4 r2 = texelFetch(uTexBones, ivec2(2, j), 0);
+    return mat3x4(r0, r1, r2);
+  }
+  void main() {
+    int id = int(aSplatId + 0.5);
+    ivec2 tc = ivec2(id & 1023, id >> 10);
+    vec4 pW = texelFetch(uTexPos, tc, 0);
+    vec4 uJ0 = texelFetch(uTexU, tc, 0);
+    vec4 vJ1 = texelFetch(uTexV, tc, 0);
+    vec4 col = texelFetch(uTexCol, tc, 0);
+
+    vec3 bPos = pW.xyz;
+    if (uMorphCount > 0 && id < uMorphSplats) {
+      int mx = id & 1023;
+      int myBase = id >> 10;
+      for (int e = 0; e < 16; e++) {
+        if (e >= uMorphCount) break;
+        float ew = uExprW[e];
+        if (ew > 0.001) {
+          bPos += ew * texelFetch(uTexMorph, ivec2(mx, e * uMorphRows + myBase), 0).xyz;
+        }
+      }
+    }
+
+    int j0 = int(uJ0.w + 0.5);
+    int j1 = int(vJ1.w + 0.5);
+    float w0 = pW.w;
+    mat3x4 m0 = loadBone(j0);
+    mat3x4 m1 = (j1 == j0) ? m0 : loadBone(j1);
+    vec4 r0 = m0[0] * w0 + m1[0] * (1.0 - w0);
+    vec4 r1 = m0[1] * w0 + m1[1] * (1.0 - w0);
+    vec4 r2 = m0[2] * w0 + m1[2] * (1.0 - w0);
+
+    vec3 wPos = vec3(dot(r0.xyz, bPos) + r0.w, dot(r1.xyz, bPos) + r1.w, dot(r2.xyz, bPos) + r2.w);
+    wPos.y += uDeskY;
+    vec4 vc = uView * vec4(wPos, 1.0);
+    if (vc.z > -0.05) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+
+    vec3 wu = vec3(dot(r0.xyz, uJ0.xyz), dot(r1.xyz, uJ0.xyz), dot(r2.xyz, uJ0.xyz));
+    vec3 wv = vec3(dot(r0.xyz, vJ1.xyz), dot(r1.xyz, vJ1.xyz), dot(r2.xyz, vJ1.xyz));
+    vec3 wn = normalize(cross(wu, wv) + vec3(1e-7)) * (0.30 * length(wu));
+
+    vec2 u2 = vec2(dot(vec3(uView[0].x, uView[1].x, uView[2].x), wu), dot(vec3(uView[0].y, uView[1].y, uView[2].y), wu));
+    vec2 v2 = vec2(dot(vec3(uView[0].x, uView[1].x, uView[2].x), wv), dot(vec3(uView[0].y, uView[1].y, uView[2].y), wv));
+    vec2 n2 = vec2(dot(vec3(uView[0].x, uView[1].x, uView[2].x), wn), dot(vec3(uView[0].y, uView[1].y, uView[2].y), wn));
+
+    float ca = u2.x*u2.x + v2.x*v2.x + n2.x*n2.x;
+    float cb = u2.x*u2.y + v2.x*v2.y + n2.x*n2.y;
+    float cc = u2.y*u2.y + v2.y*v2.y + n2.y*n2.y;
+    float mid = 0.5 * (ca + cc);
+    float halfD = length(vec2(0.5 * (ca - cc), cb));
+    float l1 = sqrt(max(1e-10, mid + halfD));
+    float l2 = sqrt(max(1e-10, mid - halfD));
+    float ang = (abs(cb) > 1e-12 || abs(ca - cc) > 1e-12) ? 0.5 * atan(2.0 * cb, ca - cc) : 0.0;
+    vec2 ex = vec2(cos(ang), sin(ang));
+    vec2 covA = ex * l1 * uScale;
+    vec2 covB = vec2(-ex.y, ex.x) * l2 * uScale;
+
+    float invZ = 1.0 / (-vc.z);
+    vec2 ndcCenter = vec2(vc.x * uFocal.x, vc.y * uFocal.y) * invZ / (uScreen * 0.5);
+    vec2 pxOff = (covA * aCorner.x + covB * aCorner.y) * uFocal * invZ;
+    gl_Position = vec4(ndcCenter + pxOff / (uScreen * 0.5), 0.0, 1.0);
+    vLocal = aCorner * 2.0;
+    vColor = col;
+  }`;
+
+  const fsSplat = `#version 300 es
+  precision highp float;
+  in vec2 vLocal;
+  in vec4 vColor;
+  out vec4 outCol;
+  void main() {
+    float r2 = dot(vLocal, vLocal);
+    if (r2 > 4.0) discard;
+    float g = exp(-0.5 * r2) * vColor.a;
+    outCol = vec4(vColor.rgb * g, g);
+  }`;
+
+  const vsShadow = `#version 300 es
+  in vec2 aCorner;
+  uniform mat4 uView;
+  uniform vec2 uFocal;
+  uniform vec2 uScreen;
+  uniform float uDeskY;
+  uniform float uRadius;
+  out vec2 vXZ;
+  void main() {
+    vec3 wp = vec3(aCorner.x * uRadius, uDeskY, aCorner.y * uRadius);
+    vec4 vc = uView * vec4(wp, 1.0);
+    if (vc.z > -0.05) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+    float invZ = 1.0 / (-vc.z);
+    gl_Position = vec4(vc.x * uFocal.x * invZ / (uScreen.x * 0.5), vc.y * uFocal.y * invZ / (uScreen.y * 0.5), 0.0, 1.0);
+    vXZ = aCorner;
+  }`;
+
+  const fsShadow = `#version 300 es
+  precision highp float;
+  in vec2 vXZ;
+  out vec4 outCol;
+  void main() {
+    float r2 = dot(vXZ, vXZ);
+    if (r2 > 1.0) discard;
+    float a = exp(-2.4 * r2) * 0.42;
+    outCol = vec4(0.0, 0.0, 0.0, a);
+  }`;
+
+  function mkProg(vs, fs) {
+    const comp = (t, s) => {
+      const sh = gl.createShader(t);
+      gl.shaderSource(sh, s);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      return sh;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, comp(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, comp(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    return p;
+  }
+
+  const prog = mkProg(vsSplat, fsSplat);
+  const shProg = mkProg(vsShadow, fsShadow);
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const qBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, qBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, 1,1, -1,-1, 1,1, -1,1]), gl.STATIC_DRAW);
+  const locC = gl.getAttribLocation(prog, "aCorner");
+  gl.enableVertexAttribArray(locC);
+  gl.vertexAttribPointer(locC, 2, gl.FLOAT, false, 0, 0);
+
+  const idBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, idBuf);
+  const locId = gl.getAttribLocation(prog, "aSplatId");
+  gl.enableVertexAttribArray(locId);
+  gl.vertexAttribPointer(locId, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(locId, 1);
+
+  const shVao = gl.createVertexArray();
+  gl.bindVertexArray(shVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, qBuf);
+  const locSC = gl.getAttribLocation(shProg, "aCorner");
+  gl.enableVertexAttribArray(locSC);
+  gl.vertexAttribPointer(locSC, 2, gl.FLOAT, false, 0, 0);
+
+  function mkTex(unit) {
+    const t = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  const texPos = mkTex(0), texU = mkTex(1), texV = mkTex(2), texCol = mkTex(3), texBones = mkTex(4), texMorph = mkTex(5);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 1, 1, 0, gl.RGBA, gl.FLOAT, new Float32Array(4));
+
+  const state = {
+    data: null, playing: true, frame: 0.0, scale: 1.25, dotMode: false,
+    yaw: 0.0, pitch: 0.14, dist: 3.0, panX: 0.0, panY: 0.0, panZ: 0.0,
+    deskMode: false, bgMode: "none", deskY: 0.0, camStream: null, photoUrl: null, active: false,
+    counts: new Int32Array(SORT_BINS), offs: new Int32Array(SORT_BINS),
+    exprUniform: new Float32Array(MAX_MORPH),
+  };
+
+  let drag = null;
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener("pointerdown", (e) => {
+    const mode = (e.button === 2 || e.button === 1 || (e.button === 0 && e.shiftKey)) ? "pan" : "orbit";
+    drag = { x: e.clientX, y: e.clientY, mode };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointerup", () => { drag = null; });
+  canvas.addEventListener("pointercancel", () => { drag = null; });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (drag.mode === "pan") {
+      const sc = (2.0 * state.dist * Math.tan((16.0 * Math.PI) / 180.0)) / Math.max(1, canvas.clientHeight);
+      const ca = Math.cos(state.yaw), sa = Math.sin(state.yaw);
+      const cb = Math.cos(state.pitch), sb = Math.sin(state.pitch);
+      const rx = ca, rz = -sa;
+      const ux = -sa * sb, uy = cb, uz = -ca * sb;
+      state.panX = Math.max(-3.0, Math.min(3.0, state.panX - rx * dx * sc + ux * dy * sc));
+      state.panY = Math.max(-3.0, Math.min(3.0, state.panY + uy * dy * sc));
+      state.panZ = Math.max(-3.0, Math.min(3.0, state.panZ - rz * dx * sc + uz * dy * sc));
+    } else {
+      state.yaw -= dx * 0.008;
+      state.pitch = Math.max(-0.08, Math.min(1.15, state.pitch + dy * 0.008));
+    }
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+  });
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    state.dist = Math.max(0.7, Math.min(12.0, state.dist * Math.exp(e.deltaY * 0.001)));
+  }, { passive: false });
+
+  function readArr(rawBuf, off, Ctor, count) {
+    const bytes = count * Ctor.BYTES_PER_ELEMENT;
+    if (off % Ctor.BYTES_PER_ELEMENT === 0) return { arr: new Ctor(rawBuf, off, count), next: off + bytes };
+    return { arr: new Ctor(rawBuf.slice(off, off + bytes)), next: off + bytes };
+  }
+
+  async function loadR3DGBase64(b64) {
+    const binStr = atob(b64);
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+    if (bytes[0] !== 0x52 || bytes[1] !== 0x33 || bytes[2] !== 0x44 || bytes[3] !== 0x47) {
+      throw new Error("Invalid R3DG payload");
+    }
+    const hdrLen = new DataView(bytes.buffer).getUint32(4, true);
+    const hdr = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + hdrLen)));
+    const comp = bytes.subarray(8 + hdrLen);
+    if (typeof DecompressionStream === "undefined") {
+      throw new Error("DecompressionStream not supported in this browser");
+    }
+    const rawBuf = await new Response(new Blob([comp]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer();
+    const N = hdr.count, F = hdr.frames, J = hdr.joints;
+    let off = 0, r;
+    r = readArr(rawBuf, off, Uint8Array, N * 3); const rgb = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Uint8Array, N); const alpha = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Float32Array, N * 3); const bindPos = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Float32Array, N * 3); const bindU = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Float32Array, N * 3); const bindV = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Uint16Array, N); const b0 = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Uint16Array, N); const b1 = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Uint8Array, N); const bw0 = r.arr; off = r.next;
+    r = readArr(rawBuf, off, Float32Array, F * J * 12); const boneMats = r.arr; off = r.next;
+
+    const M = Math.min(MAX_MORPH, hdr.morph_count || 0);
+    const K = M > 0 ? (hdr.morph_splats || 0) : 0;
+    const mScale = hdr.morph_scale || 1.0;
+    let qMorph = null, exprWeights = null, morphRows = 1;
+    const exprMax = {};
+    if (M > 0 && K > 0) {
+      r = readArr(rawBuf, off, Int16Array, M * K * 3); qMorph = r.arr; off = r.next;
+      r = readArr(rawBuf, off, Float32Array, F * M); exprWeights = r.arr; off = r.next;
+      morphRows = Math.ceil(K / TEX_W);
+      const tMorph = new Float32Array(M * morphRows * TEX_W * 4);
+      for (let e = 0; e < M; e++) {
+        const srcBase = e * K * 3;
+        const dstRowBase = e * morphRows * TEX_W * 4;
+        for (let i = 0; i < K; i++) {
+          const s3 = srcBase + i * 3;
+          const d4 = dstRowBase + i * 4;
+          tMorph[d4] = qMorph[s3] * mScale;
+          tMorph[d4 + 1] = qMorph[s3 + 1] * mScale;
+          tMorph[d4 + 2] = qMorph[s3 + 2] * mScale;
+        }
+        let mx = 0;
+        for (let f = 0; f < F; f++) {
+          const v = exprWeights[f * M + e];
+          if (v > mx) mx = v;
+        }
+        const nm = (hdr.expr_names && hdr.expr_names[e]) || ("expr" + e);
+        exprMax[nm] = Math.round(mx * 1000) / 1000;
+      }
+      gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, texMorph);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, M * morphRows, 0, gl.RGBA, gl.FLOAT, tMorph);
+    } else {
+      gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, texMorph);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 1, 1, 0, gl.RGBA, gl.FLOAT, new Float32Array(4));
+    }
+    console.info("[R3DG Expr] WebGL2 baked loaded:", {
+      morph_count: M,
+      morph_splats: K,
+      expr_names: hdr.expr_names || [],
+      max_weights: exprMax,
+    });
+
+    const texH = Math.ceil(N / TEX_W);
+    const cap = texH * TEX_W;
+    const tPos = new Float32Array(cap * 4), tU = new Float32Array(cap * 4), tV = new Float32Array(cap * 4);
+    const tCol = new Uint8Array(cap * 4);
+    for (let i = 0; i < N; i++) {
+      const i3 = i * 3, i4 = i * 4;
+      tPos[i4] = bindPos[i3]; tPos[i4+1] = bindPos[i3+1]; tPos[i4+2] = bindPos[i3+2]; tPos[i4+3] = bw0[i] / 255.0;
+      tU[i4] = bindU[i3]; tU[i4+1] = bindU[i3+1]; tU[i4+2] = bindU[i3+2]; tU[i4+3] = b0[i];
+      tV[i4] = bindV[i3]; tV[i4+1] = bindV[i3+1]; tV[i4+2] = bindV[i3+2]; tV[i4+3] = b1[i];
+      tCol[i4] = rgb[i3]; tCol[i4+1] = rgb[i3+1]; tCol[i4+2] = rgb[i3+2]; tCol[i4+3] = alpha[i];
+    }
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texPos);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, texH, 0, gl.RGBA, gl.FLOAT, tPos);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texU);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, texH, 0, gl.RGBA, gl.FLOAT, tU);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, texV);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, texH, 0, gl.RGBA, gl.FLOAT, tV);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, texCol);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, TEX_W, texH, 0, gl.RGBA, gl.UNSIGNED_BYTE, tCol);
+    gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, texBones);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 3, J, 0, gl.RGBA, gl.FLOAT, boneMats.subarray(0, J * 12));
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, idBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, N * 4, gl.DYNAMIC_DRAW);
+
+    const bmin = hdr.bbox_min, bmax = hdr.bbox_max;
+    state.dist = Math.max(2.0, (bmax[1] - bmin[1]) * 2.1);
+    state.panX = 0.0; state.panY = 0.0; state.panZ = 0.0;
+    state.frame = 0.0;
+    state.data = {
+      hdr, N, F, FPS: hdr.fps, J, M, K, morphRows, bindPos, b0, boneMats, qMorph, mScale, exprWeights,
+      interpBones: new Float32Array(J * 12),
+      jointDepth: new Float32Array(J * 4),
+      depths: new Float32Array(N),
+      order: new Float32Array(N),
+      activeM: [],
+    };
+    if (scrubEl) scrubEl.max = Math.max(0, F - 1);
+    const fpsStr = Number(hdr.fps).toFixed(Math.abs(hdr.fps - Math.round(hdr.fps)) > 0.05 ? 1 : 0);
+    const mStr = M > 0 ? ` · ${M} expr` : "";
+    if (hudEl) hudEl.textContent = `${N.toLocaleString()} Rigged Gaussians · ${F}F @ ${fpsStr}fps (${J} bones${mStr}) · L-drag: orbit · R-drag: move · Wheel: zoom`;
+  }
+
+  function clearDeskBg() {
+    if (state.camStream) { state.camStream.getTracks().forEach((t) => t.stop()); state.camStream = null; }
+    if (videoEl) { videoEl.srcObject = null; videoEl.style.display = "none"; }
+    if (photoEl) { photoEl.removeAttribute("src"); photoEl.style.display = "none"; }
+    if (state.photoUrl) { URL.revokeObjectURL(state.photoUrl); state.photoUrl = null; }
+    state.bgMode = "none";
+    state.deskMode = false;
+  }
+
+  function setDeskPhoto(file) {
+    if (!file || !photoEl) return false;
+    clearDeskBg();
+    const url = URL.createObjectURL(file);
+    state.photoUrl = url;
+    photoEl.src = url;
+    photoEl.style.display = "block";
+    state.bgMode = "photo";
+    state.deskMode = true;
+    return true;
+  }
+
+  async function toggleDeskAR(forceOff) {
+    if (forceOff || state.bgMode === "camera") {
+      clearDeskBg();
+      return { ok: true, on: false };
+    }
+    const inIframe = (() => { try { return window.self !== window.top; } catch (_) { return true; } })();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const reason = inIframe ? "iframe" : "no_api";
+      console.error("[R3DG Camera BG] mediaDevices.getUserMedia unavailable", { isSecureContext: window.isSecureContext, inIframe, href: location.href });
+      if (statusEl) { statusEl.textContent = "Camera API blocked (" + reason + ")."; statusEl.className = "err"; }
+      return { ok: false, on: false, reason, message: "mediaDevices.getUserMedia unavailable" };
+    }
+    clearDeskBg();
+    try {
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      } catch (e1) {
+        console.warn("[R3DG Camera BG] environment camera failed, retrying default:", e1 && e1.name, e1 && e1.message, e1);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+      state.camStream = stream;
+      videoEl.srcObject = stream;
+      videoEl.style.display = "block";
+      state.bgMode = "camera";
+      state.deskMode = true;
+      return { ok: true, on: true };
+    } catch (e) {
+      const reason = inIframe ? "iframe_denied" : (e && e.name ? e.name : "denied");
+      const message = e && e.message ? e.message : "";
+      console.error("[R3DG Camera BG] getUserMedia failed:", { name: e && e.name, message, isSecureContext: window.isSecureContext, inIframe, href: location.href }, e);
+      if (navigator.mediaDevices.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          console.info("[R3DG Camera BG] videoinput devices:", devices.filter((d) => d.kind === "videoinput"));
+        } catch (ed) {
+          console.warn("[R3DG Camera BG] enumerateDevices failed:", ed);
+        }
+      }
+      if (statusEl) { statusEl.textContent = "Camera blocked (" + reason + "). Try Photo BG or Single .HTML."; statusEl.className = "err"; }
+      return { ok: false, on: false, reason, message };
+    }
+  }
+
+  function renderFrame(dt) {
+    const d = state.data;
+    if (!d) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+    const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    gl.viewport(0, 0, w, h);
+
+    if (state.playing) state.frame = (state.frame + dt * d.FPS) % d.F;
+    const fWrap = ((state.frame % d.F) + d.F) % d.F;
+    const f0 = Math.floor(fWrap) % d.F;
+    const f1 = (f0 + 1) % d.F;
+    const alphaT = fWrap - Math.floor(fWrap);
+    if (scrubEl) { scrubEl.disabled = false; scrubEl.max = Math.max(0, d.F - 1); scrubEl.value = f0; }
+    if (fnumEl) fnumEl.textContent = `${f0 + 1}/${d.F}`;
+
+    const J12 = d.J * 12, off0 = f0 * J12, off1 = f1 * J12, ib = d.interpBones, bm = d.boneMats;
+    const invA = 1.0 - alphaT;
+    for (let k = 0; k < J12; k++) ib[k] = bm[off0 + k] * invA + bm[off1 + k] * alphaT;
+
+    const eu = state.exprUniform;
+    eu.fill(0);
+    if (d.M > 0 && d.exprWeights) {
+      const e0 = f0 * d.M, e1 = f1 * d.M, ew = d.exprWeights;
+      for (let e = 0; e < d.M; e++) eu[e] = ew[e0 + e] * invA + ew[e1 + e] * alphaT;
+    }
+
+    const bmin = d.hdr.bbox_min, bmax = d.hdr.bbox_max;
+    const cx = state.panX, cy = (bmin[1] + bmax[1]) * 0.5 + state.deskY + state.panY, cz = state.panZ;
+    const ca = Math.cos(state.yaw), sa = Math.sin(state.yaw), cb = Math.cos(state.pitch), sb = Math.sin(state.pitch);
+    const ex = cx + sa * cb * state.dist, ey = cy + sb * state.dist, ez = cz + ca * cb * state.dist;
+    let fx = cx - ex, fy = cy - ey, fz = cz - ez;
+    const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
+    let rx = -fz, ry = 0, rz = fx;
+    const rl = Math.hypot(rx, ry, rz) || 1; rx /= rl; rz /= rl;
+    const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+    const V = new Float32Array([
+      rx, ux, -fx, 0, ry, uy, -fy, 0, rz, uz, -fz, 0,
+      -(rx*ex+ry*ey+rz*ez), -(ux*ex+uy*ey+uz*ez), (fx*ex+fy*ey+fz*ez), 1
+    ]);
+
+    const v2 = V[2], v6 = V[6], v10 = V[10], v14 = V[14], jd = d.jointDepth;
+    for (let j = 0; j < d.J; j++) {
+      const m = j * 12, o = j * 4;
+      jd[o]   = v2 * ib[m]   + v6 * ib[m+4] + v10 * ib[m+8];
+      jd[o+1] = v2 * ib[m+1] + v6 * ib[m+5] + v10 * ib[m+9];
+      jd[o+2] = v2 * ib[m+2] + v6 * ib[m+6] + v10 * ib[m+10];
+      jd[o+3] = v2 * (ib[m+3]) + v6 * (ib[m+7] + state.deskY) + v10 * ib[m+11] + v14;
+    }
+
+    const activeM = d.activeM;
+    activeM.length = 0;
+    for (let e = 0; e < d.M; e++) {
+      if (eu[e] > 0.001) activeM.push(e);
+    }
+
+    const N = d.N, bp = d.bindPos, jb = d.b0, depths = d.depths, order = d.order;
+    const qm = d.qMorph, msc = d.mScale, K = d.K, nAct = activeM.length;
+    let minZ = 1e9, maxZ = -1e9;
+    if (qm && nAct > 0 && K > 0) {
+      const lim = Math.min(N, K);
+      const stride = K * 3;
+      for (let i = 0; i < lim; i++) {
+        const p3 = i * 3, jo = jb[i] * 4;
+        let px = bp[p3], py = bp[p3+1], pz = bp[p3+2];
+        for (let a = 0; a < nAct; a++) {
+          const e = activeM[a], w = eu[e] * msc, mo = e * stride + p3;
+          px += qm[mo] * w;
+          py += qm[mo + 1] * w;
+          pz += qm[mo + 2] * w;
+        }
+        const vz = jd[jo]*px + jd[jo+1]*py + jd[jo+2]*pz + jd[jo+3];
+        depths[i] = vz;
+        if (vz < minZ) minZ = vz;
+        if (vz > maxZ) maxZ = vz;
+      }
+      for (let i = lim; i < N; i++) {
+        const p3 = i * 3, jo = jb[i] * 4;
+        const vz = jd[jo]*bp[p3] + jd[jo+1]*bp[p3+1] + jd[jo+2]*bp[p3+2] + jd[jo+3];
+        depths[i] = vz;
+        if (vz < minZ) minZ = vz;
+        if (vz > maxZ) maxZ = vz;
+      }
+    } else {
+      for (let i = 0; i < N; i++) {
+        const p3 = i * 3, jo = jb[i] * 4;
+        const vz = jd[jo]*bp[p3] + jd[jo+1]*bp[p3+1] + jd[jo+2]*bp[p3+2] + jd[jo+3];
+        depths[i] = vz;
+        if (vz < minZ) minZ = vz;
+        if (vz > maxZ) maxZ = vz;
+      }
+    }
+    const counts = state.counts, offs = state.offs;
+    counts.fill(0);
+    const invZ = (SORT_BINS - 1) / Math.max(1e-4, maxZ - minZ);
+    for (let i = 0; i < N; i++) counts[Math.max(0, Math.min(SORT_BINS - 1, ((depths[i] - minZ) * invZ) | 0))]++;
+    let acc = 0;
+    for (let b = 0; b < SORT_BINS; b++) { offs[b] = acc; acc += counts[b]; }
+    for (let i = 0; i < N; i++) order[offs[Math.max(0, Math.min(SORT_BINS - 1, ((depths[i] - minZ) * invZ) | 0))]++] = i;
+
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, texBones);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 3, d.J, gl.RGBA, gl.FLOAT, ib);
+    gl.bindBuffer(gl.ARRAY_BUFFER, idBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, order);
+
+    const focalY = h / (2 * Math.tan((32 * Math.PI) / 360));
+    if (state.deskMode) gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    else gl.clearColor(0.067, 0.078, 0.125, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    if (state.deskMode) {
+      gl.useProgram(shProg);
+      gl.bindVertexArray(shVao);
+      gl.uniformMatrix4fv(gl.getUniformLocation(shProg, "uView"), false, V);
+      gl.uniform2f(gl.getUniformLocation(shProg, "uFocal"), focalY, focalY);
+      gl.uniform2f(gl.getUniformLocation(shProg, "uScreen"), w, h);
+      gl.uniform1f(gl.getUniformLocation(shProg, "uDeskY"), state.deskY + bmin[1]);
+      gl.uniform1f(gl.getUniformLocation(shProg, "uRadius"), 0.42);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    gl.useProgram(prog);
+    gl.bindVertexArray(vao);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexPos"), 0);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexU"), 1);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexV"), 2);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexCol"), 3);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexBones"), 4);
+    gl.uniform1i(gl.getUniformLocation(prog, "uTexMorph"), 5);
+    gl.uniform1i(gl.getUniformLocation(prog, "uMorphCount"), d.M);
+    gl.uniform1i(gl.getUniformLocation(prog, "uMorphSplats"), d.K);
+    gl.uniform1i(gl.getUniformLocation(prog, "uMorphRows"), d.morphRows);
+    const locExprW = gl.getUniformLocation(prog, "uExprW[0]") || gl.getUniformLocation(prog, "uExprW");
+    if (locExprW !== null) gl.uniform1fv(locExprW, eu);
+    gl.uniformMatrix4fv(gl.getUniformLocation(prog, "uView"), false, V);
+    gl.uniform2f(gl.getUniformLocation(prog, "uFocal"), focalY, focalY);
+    gl.uniform2f(gl.getUniformLocation(prog, "uScreen"), w, h);
+    gl.uniform1f(gl.getUniformLocation(prog, "uScale"), state.scale * (state.dotMode ? 0.38 : 1.0));
+    gl.uniform1f(gl.getUniformLocation(prog, "uDeskY"), state.deskY);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, N);
+  }
+
+  let lastTs = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.1, (now - lastTs) * 0.001);
+    lastTs = now;
+    if (state.active && state.data) renderFrame(dt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  return { state, loadR3DGBase64, toggleDeskAR, setDeskPhoto, clearDeskBg };
+}
+
+let glPlayer = null;
+function ensureGLPlayer() {
+  if (!glPlayer) {
+    glPlayer = createR3DGPlayer({
+      canvas: $("gl-canvas"),
+      videoEl: $("gl-cam"),
+      photoEl: $("gl-photo"),
+      hudEl: $("gl-hud"),
+      statusEl: $("status"),
+      scrubEl: $("scrub"),
+      fnumEl: $("fnum"),
+    });
+  }
+  return glPlayer;
+}
+
+function syncBgOverlay() {
+  const on = !!(glPlayer && glPlayer.state.deskMode);
+  const camOn = !!(glPlayer && glPlayer.state.bgMode === "camera");
+  $("gl-ar").classList.toggle("active", camOn);
+  $("gl-clr-bg").style.display = on ? "inline-flex" : "none";
+  $("gl-desky-wrap").style.display = on ? "flex" : "none";
+}
+
+function showArMessage(reason) {
+  lastArReason = reason;
+  $("gl-ar-msg-txt").textContent = formatArMessage(reason);
+  $("gl-ar-msg").style.display = "flex";
+}
+
+let sampleTried = false, curMotion = "walk";
+
+function ready() { return window.pyxelContext && window.pyxelContext.initialized; }
+function send(cmd) {
+  if (!ready()) return;
+  window.pyxelContext.pyodide.runPython(
+    "import pyxel; pyxel._vrm4d = list(getattr(pyxel, '_vrm4d', None) or []) + [" + JSON.stringify(cmd) + "]"
+  );
+}
+function setBusy(on, text, pct) {
+  document.querySelectorAll(".exp").forEach((b) => (b.disabled = on));
+  $("progress").hidden = !on;
+  if (on) {
+    $("pfill").style.width = (pct || 0) + "%";
+    $("ptext").textContent = text || "Working...";
+  }
+}
+async function openFile(file) {
+  if (!ready()) return;
+  const FS = window.pyxelContext.pyodide.FS;
+  try { FS.mkdirTree("/tmp/inbox"); } catch (e) {}
+  const name = Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  FS.writeFile("/tmp/inbox/" + name, new Uint8Array(await file.arrayBuffer()));
+  $("status").textContent = "Loading " + file.name + " ...";
+}
+async function loadSample() {
+  try {
+    $("status").textContent = "Loading sample.vrm ...";
+    const r = await fetch("sample.vrm");
+    if (!r.ok) throw new Error(r.status);
+    await openFile(new File([await r.blob()], "Sendagaya_Shibu_sample.vrm"));
+  } catch (e) {
+    $("status").textContent = "Sample load skipped: " + e.message;
+  }
+}
+
+$("sample").addEventListener("click", loadSample);
+$("file").addEventListener("change", (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ""; });
+$("motfile").addEventListener("change", (e) => { if (e.target.files[0]) openFile(e.target.files[0]); e.target.value = ""; });
+$("motion").addEventListener("change", (e) => selectMotion(e.target.value));
+$("mode").addEventListener("change", (e) => send("mode:" + e.target.value));
+$("brush").addEventListener("change", (e) => send("brush:" + e.target.value));
+$("cull").addEventListener("change", (e) => send("cull:" + e.target.value));
+$("count").addEventListener("change", (e) => send("count:" + e.target.value));
+$("fps").addEventListener("change", (e) => send("fps:" + e.target.value));
+$("autoblink").addEventListener("change", (e) => send("autoblink:" + e.target.value));
+$("exprtest").addEventListener("change", (e) => send("exprtest:" + e.target.value));
+$("scale").addEventListener("input", (e) => {
+  if (glPlayer) glPlayer.state.scale = +e.target.value;
+  send("scale:" + e.target.value);
+});
+$("bake").addEventListener("click", () => { setBusy(true, "Starting Rigged 3DGS bake...", 0); send("bake"); });
+$("gl-rebake-btn").addEventListener("click", () => { setBusy(true, "Baking WebGL2 4DGS...", 2); send("preview:webgl"); });
+$("play").addEventListener("click", () => {
+  if (glPlayer) glPlayer.state.playing = !glPlayer.state.playing;
+  send("play:toggle");
+});
+$("scrub").addEventListener("input", (e) => {
+  if (glPlayer) { glPlayer.state.frame = +e.target.value; glPlayer.state.playing = false; }
+  send("frame:" + e.target.value);
+});
+$("pyxel-screen").addEventListener("contextmenu", (e) => e.preventDefault());
+$("reset").addEventListener("click", () => {
+  if (glPlayer) { glPlayer.state.yaw = 0; glPlayer.state.pitch = 0.14; glPlayer.state.panX = 0; glPlayer.state.panY = 0; glPlayer.state.panZ = 0; }
+  send("view:reset");
+});
+$("gl-ar").addEventListener("click", async () => {
+  const p = ensureGLPlayer();
+  if (!p) return;
+  const res = await p.toggleDeskAR();
+  if (res && res.ok) {
+    lastArReason = null;
+    $("gl-ar-msg").style.display = "none";
+  } else if (res && !res.ok) {
+    showArMessage(res.reason || "denied");
+  }
+  syncBgOverlay();
+});
+$("gl-photo-in").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (f) {
+    const p = ensureGLPlayer();
+    if (p) {
+      p.setDeskPhoto(f);
+      lastArReason = null;
+      $("gl-ar-msg").style.display = "none";
+      syncBgOverlay();
+    }
+  }
+  e.target.value = "";
+});
+$("gl-clr-bg").addEventListener("click", () => {
+  if (glPlayer) glPlayer.clearDeskBg();
+  syncBgOverlay();
+});
+$("gl-ar-msg-close").addEventListener("click", () => { $("gl-ar-msg").style.display = "none"; });
+$("gl-desky").addEventListener("input", (e) => {
+  if (glPlayer) glPlayer.state.deskY = +e.target.value;
+});
+$("gl-style").addEventListener("click", () => {
+  const p = ensureGLPlayer();
+  if (!p) return;
+  p.state.dotMode = !p.state.dotMode;
+  syncDynamicLabels();
+});
+$("exp_ply").addEventListener("click", () => { setBusy(true, "Preparing .PLY...", 20); send("export:ply"); });
+$("exp_splat").addEventListener("click", () => { setBusy(true, "Preparing .SPLAT...", 20); send("export:splat"); });
+$("exp_zip").addEventListener("click", () => { setBusy(true, "Preparing 4DGS .ZIP...", 2); send("export:zip"); });
+$("exp_html").addEventListener("click", () => { setBusy(true, "Preparing Single .HTML...", 2); send("export:html"); });
+
+function selectMotion(id) {
+  curMotion = id;
+  $("motion").value = id;
+  document.querySelectorAll("#motions .mitem").forEach((b) => b.classList.toggle("cur", b.dataset.id === id));
+  send("motion:" + id);
+}
+
+["keydown", "keyup", "keypress"].forEach((t) => $("mfilter").addEventListener(t, (e) => e.stopPropagation()));
+$("mfilter").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll("#motions .mitem").forEach((b) => { b.hidden = q && !b.textContent.toLowerCase().includes(q); });
+  document.querySelectorAll("#motions .grp").forEach((g) => { g.hidden = !g.querySelector(".mitem:not([hidden])"); });
+});
+
+$("tab_pyxel").addEventListener("click", () => setTab("pyxel"));
+$("tab_webgl").addEventListener("click", () => {
+  if (glPlayer && glPlayer.state.data) {
+    setTab("webgl");
+  } else {
+    setBusy(true, "Baking Rigged 3DGS for WebGL2...", 2);
+    send("preview:webgl");
+  }
+});
+
+function setTab(t) {
+  activeTab = t;
+  const isGL = (t === "webgl");
+  $("tab_pyxel").classList.toggle("active", !isGL);
+  $("tab_webgl").classList.toggle("active", isGL);
+  $("gl-wrap").style.display = isGL ? "block" : "none";
+
+  $("pyxel-card").classList.toggle("is-disabled", isGL);
+  $("mode").disabled = isGL;
+  $("brush").disabled = isGL;
+
+  if (glPlayer) {
+    glPlayer.state.active = isGL;
+    if (!isGL && glPlayer.state.deskMode) {
+      glPlayer.clearDeskBg();
+      syncBgOverlay();
+    }
+  }
+  $("gl-rebake").style.display = (isGL && (!glPlayer || !glPlayer.state.data)) ? "flex" : "none";
+  syncDynamicLabels();
+}
+
+applyLang("en");
+setTab("pyxel");
+
+// ---- Pyxel -> Page callbacks
+window.v4dMotions = (json) => {
+  const d = JSON.parse(json);
+  const yours = d.motions.filter((m) => m.user);
+  const list = yours.concat(d.motions.filter((m) => !m.user));
+  if (d.select) curMotion = d.select;
+  $("motion").innerHTML = list.map((m) => `<option value="${esc(m.id)}">${esc(m.label)}${m.has_expr ? " [EXPR]" : ""}</option>`).join("");
+  $("motion").disabled = false;
+  $("motion").value = curMotion;
+  const groups = [];
+  list.forEach((m) => {
+    let g = groups.find((x) => x.name === m.group);
+    if (!g) groups.push(g = { name: m.group || "Other", items: [] });
+    g.items.push(m);
+  });
+  $("motions").innerHTML = groups.map((g) =>
+    `<div class="grp"><h3>${esc(g.name)} (${g.items.length})</h3>` +
+    g.items.map((m) => `<button type="button" class="mitem${m.id === curMotion ? " cur" : ""}" data-id="${esc(m.id)}">${esc(m.label)}${m.has_expr ? " [EXPR]" : ""}</button>`).join("") +
+    `</div>`
+  ).join("");
+  $("motions").onclick = (e) => {
+    const b = e.target.closest(".mitem");
+    if (b) selectMotion(b.dataset.id);
+  };
+  if (!sampleTried) { sampleTried = true; loadSample(); }
+};
+window.v4dMotion = (json) => { selectMotion(JSON.parse(json).id); };
+window.v4dInfo = (json) => {
+  const d = JSON.parse(json);
+  $("mtitle").textContent = `${d.title} (${d.version})`;
+  const fStr = d.face_splats !== undefined ? `face ${d.face_splats.toLocaleString()} · ` : "";
+  const eStr = d.expr_count !== undefined ? ` · ${d.expr_count} morphs` : "";
+  $("mstats").textContent = `${d.author} · ${d.tris.toLocaleString()} tris · ${d.splats.toLocaleString()} splats (${fStr}culled ${d.culled_pct}%${eStr})`;
+  const noteEl = $("expr-note");
+  if (noteEl) {
+    if (d.expr_count > 0) {
+      noteEl.style.color = "#70c6a9";
+      noteEl.textContent = `VRM expressions: ${(d.expr_names || []).join(", ")}`;
+    } else {
+      noteEl.style.color = "#f2c97d";
+      noteEl.textContent = "Note: This VRM has 0 facial morphs (no blink/lip-sync shapes in VRM file).";
+    }
+  }
+  $("warnings").innerHTML = (d.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  $("license").innerHTML = (d.license || []).map((l) => /^https?:\/\//.test(l)
+    ? `<div><a href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a></div>` : `<div>${esc(l)}</div>`).join("");
+};
+window.v4dExprLog = (json) => {
+  const d = JSON.parse(json);
+  console.info("[R3DG Expr]", d);
+  const noteEl = $("expr-note");
+  if (noteEl && d.kind === "vrma") {
+    const mw = (d.diag && d.diag.max_weights) || {};
+    const keys = Object.keys(mw);
+    const vrmaLine = keys.length
+      ? `VRMA exprs: ${keys.map((k) => `${k}=${mw[k]}`).join(", ")}`
+      : `VRMA exprs: none (${(d.diag && d.diag.has_expr_ext) ? "all 0 weight" : "no expressions block"})`;
+    noteEl.textContent = (noteEl.textContent ? noteEl.textContent.split(" | VRMA")[0] + " | " : "") + vrmaLine;
+  }
+};
+window.v4dProgress = (json) => {
+  const d = JSON.parse(json);
+  setBusy(!!d.busy, d.text, d.pct);
+};
+window.v4dWebGLReady = () => {
+  $("gl-rebake").style.display = "none";
+  setTab("webgl");
+};
+window.v4dStatus = (json) => {
+  const d = JSON.parse(json);
+  $("status").textContent = d.text || "";
+  $("status").className = d.error ? "err" : "";
+  if (d.baked) {
+    $("scrub").disabled = false;
+    $("scrub").max = Math.max(0, d.frames - 1);
+    $("gl-rebake").style.display = "none";
+  } else {
+    $("scrub").disabled = true;
+    $("fnum").textContent = I18N[curLang].live_lbl;
+    if (glPlayer) glPlayer.state.data = null;
+    if (activeTab === "webgl") $("gl-rebake").style.display = "flex";
+  }
+};
+window.v4dFrame = (json) => {
+  const d = JSON.parse(json);
+  if (activeTab === "pyxel") {
+    $("scrub").disabled = false;
+    $("scrub").max = Math.max(0, d.frames - 1);
+    $("scrub").value = d.frame;
+    $("fnum").textContent = `${d.frame + 1}/${d.frames}`;
+  }
+};
+window.v4dBakedPayload = async (b64) => {
+  const p = ensureGLPlayer();
+  if (!p) return;
+  try {
+    await p.loadR3DGBase64(b64);
+    p.state.scale = +$("scale").value;
+    p.state.deskY = +$("gl-desky").value;
+    p.state.active = (activeTab === "webgl");
+    $("gl-rebake").style.display = "none";
+  } catch (e) {
+    $("status").textContent = "WebGL2 load error: " + (e.message || e);
+    $("status").className = "err";
+  }
+};
+</script>
+</body>
+</html>
